@@ -80,8 +80,8 @@ def index():
     if not current_user.is_authenticated:
         return redirect(url_for('login'))
     
-    # Only clean up files if we're not in the middle of a file download
-    if not session.get('downloading'):
+    # Only clean up files if we're not in the middle of a file download or on a download page
+    if not session.get('downloading') and not session.get('on_download_page'):
         logging.debug("Index route - cleaning up old files")
         # Clear any stored file paths when landing on the homepage
         for key in ['temp_file_path', 'output_file_path', 'encrypted_file_path', 'decrypted_file_path']:
@@ -94,8 +94,11 @@ def index():
                     session.pop(key, None)
                 except (OSError, FileNotFoundError) as e:
                     logging.error(f"Error clearing file {key} from index: {str(e)}")
+                    
+        # Also clear any stale flags
+        session.pop('on_download_page', None)
     else:
-        logging.debug("Index route - skipping cleanup due to active download")
+        logging.debug("Index route - skipping cleanup due to active download or download page")
         
     return render_template('index.html')
 
@@ -247,9 +250,13 @@ def download_encrypted():
     
     logging.info(f"Showing download page for: {file_path} as {filename}")
     
+    # Mark that we're on the download page to prevent cleanup
+    session['on_download_page'] = True
+    
     # Verify the file exists
     if not os.path.exists(file_path):
         logging.error(f"File does not exist at path: {file_path}")
+        session.pop('on_download_page', None)
         flash('Encrypted file not found on server', 'danger')
         return redirect(url_for('index'))
         
@@ -411,9 +418,13 @@ def download_decrypted():
     
     logging.info(f"Showing decrypted download page for: {file_path} as {filename}")
     
+    # Mark that we're on the download page to prevent cleanup
+    session['on_download_page'] = True
+    
     # Verify the file exists
     if not os.path.exists(file_path):
         logging.error(f"Decrypted file does not exist at path: {file_path}")
+        session.pop('on_download_page', None)
         flash('Decrypted file not found on server', 'danger')
         return redirect(url_for('index'))
     
@@ -568,9 +579,13 @@ def encryption_keys():
 def clear_files():
     """Explicitly clear temporary files"""
     if has_request_context():
-        # Don't clean if we're in the middle of a download
+        # Don't clean if we're in the middle of a download or on download page
         if session.get('downloading'):
             flash('Cannot clear files while a download is in progress', 'warning')
+            return redirect(url_for('index'))
+        
+        if session.get('on_download_page'):
+            flash('Cannot clear files while on download page', 'warning')
             return redirect(url_for('index'))
             
         for key in ['temp_file_path', 'output_file_path', 'encrypted_file_path', 'decrypted_file_path']:
@@ -588,5 +603,6 @@ def clear_files():
         
         # Clear any leftover flags
         session.pop('downloading', None)
+        session.pop('on_download_page', None)
         flash('Temporary files cleared', 'info')
     return redirect(url_for('index'))
