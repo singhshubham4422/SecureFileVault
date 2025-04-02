@@ -1,0 +1,75 @@
+Project Title:
+Flask-Based Secure File Encryption & Decryption App
+
+Description:
+Develop a Flask web application that allows users to securely encrypt files on one system and decrypt them on another using a password-based key derivation method. The app should support AES-256, 3DES, RSA, and ECC encryption methods and be user-friendly, allowing users to:
+
+Upload a file for encryption.
+
+Select an encryption algorithm.
+
+Provide a password (used to derive a cryptographic key).
+
+Download the encrypted file.
+
+Later, upload the encrypted file to another system, provide the correct password, and decrypt it.
+
+Key Requirements:
+Flask Backend:
+
+Handle file upload, encryption, and decryption.
+
+Use a secure password-based key derivation function (PBKDF2 or Scrypt).
+
+Store no keys or passwords on the server—everything should be derived dynamically.
+
+Encryption Methods:
+
+AES-256 (Advanced Encryption Standard - 256-bit key)
+
+3DES (Triple DES - 168-bit key)
+
+RSA (Public-Private Key Encryption, 2048-bit minimum)
+
+ECC (Elliptic Curve Cryptography - Curve25519 or secp256k1)
+
+File Handling:
+
+Allow users to upload any type of file (PDF, images, ZIP, etc.).
+
+Encrypt and let users download the encrypted file.
+
+Let users upload an encrypted file on another system, provide the password, and decrypt it.
+
+Frontend (HTML/CSS/JavaScript):
+
+User-friendly UI for uploading, encrypting, decrypting, and downloading files.
+
+Display clear messages for success or failure.
+
+Security Measures:
+
+Use PBKDF2 or Scrypt for deriving keys from passwords.
+
+Implement proper padding (PKCS7/PKCS5) for AES & 3DES.
+
+Ensure RSA keys are generated dynamically or uploaded by the user.
+
+Do not store passwords or derived keys on the server.
+
+Additional Features (Optional but Recommended):
+User Authentication (Flask-Login) if needed.
+
+Key Pair Management (Allow users to generate/download RSA or ECC keys).
+
+Database (SQLite/PostgreSQL) for tracking encryption history (if required).
+
+Expected Output:
+A fully functional Flask web app where users can:
+
+Encrypt a file with a chosen algorithm and password.
+
+Download the encrypted file.
+
+Later, upload the encrypted file on another system and decrypt it using the correct password.
+
