@@ -48,8 +48,9 @@ def load_user(user_id):
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx'}
 MAX_CONTENT_LENGTH = 20 * 1024 * 1024  # 20 MB max file size
 
-# Temporary directory for file operations
-TEMP_DIR = tempfile.gettempdir()
+# Create a secure temporary directory for file uploads
+TEMP_DIR = os.path.join(tempfile.gettempdir(), 'secure_file_encryption')
+os.makedirs(TEMP_DIR, exist_ok=True)
 
 # Create database tables
 with app.app_context():
@@ -247,7 +248,18 @@ def get_encrypted_file():
     file_path = session['encrypted_file_path']
     filename = session['encrypted_filename']
     
-    return send_file(file_path, as_attachment=True, download_name=filename)
+    # Check if file exists before sending
+    if not os.path.exists(file_path):
+        flash('Encrypted file not found on server', 'danger')
+        return redirect(url_for('index'))
+        
+    try:
+        logging.info(f"Attempting to send file: {file_path} as {filename}")
+        return send_file(file_path, as_attachment=True, download_name=filename)
+    except Exception as e:
+        logging.error(f"Error sending file: {str(e)}")
+        flash(f'Error downloading file: {str(e)}', 'danger')
+        return redirect(url_for('index'))
 
 @app.route('/decrypt', methods=['POST'])
 @login_required
@@ -367,7 +379,18 @@ def get_decrypted_file():
     file_path = session['decrypted_file_path']
     filename = session['decrypted_filename']
     
-    return send_file(file_path, as_attachment=True, download_name=filename)
+    # Check if file exists before sending
+    if not os.path.exists(file_path):
+        flash('Decrypted file not found on server', 'danger')
+        return redirect(url_for('index'))
+        
+    try:
+        logging.info(f"Attempting to send decrypted file: {file_path} as {filename}")
+        return send_file(file_path, as_attachment=True, download_name=filename)
+    except Exception as e:
+        logging.error(f"Error sending decrypted file: {str(e)}")
+        flash(f'Error downloading file: {str(e)}', 'danger')
+        return redirect(url_for('index'))
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
@@ -474,14 +497,19 @@ def encryption_keys():
     keys = EncryptionKey.query.filter_by(user_id=current_user.id).order_by(EncryptionKey.created_at.desc()).all()
     return render_template('keys.html', keys=keys)
 
-# Clean up temporary files when the application shuts down
-@app.teardown_request
-def cleanup_temp_files(exception):
-    # Only attempt to clean up files if we're in a request context
+# Clean up temporary files only when necessary
+@app.route('/clear_files')
+def clear_files():
+    """Explicitly clear temporary files"""
     if has_request_context():
         for key in ['temp_file_path', 'output_file_path', 'encrypted_file_path', 'decrypted_file_path']:
             if key in session:
                 try:
-                    os.remove(session[key])
-                except (OSError, FileNotFoundError):
-                    pass
+                    path = session[key]
+                    if os.path.exists(path):
+                        os.remove(path)
+                    session.pop(key, None)
+                except (OSError, FileNotFoundError) as e:
+                    logging.error(f"Error clearing file {key}: {str(e)}")
+        flash('Temporary files cleared', 'info')
+    return redirect(url_for('index'))

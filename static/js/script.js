@@ -123,7 +123,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize clipboard.js
     if (typeof ClipboardJS !== 'undefined') {
-        new ClipboardJS('.btn[data-clipboard-target]').on('success', function(e) {
+        var clipboard = new ClipboardJS('.btn[data-clipboard-target]');
+        clipboard.on('success', function(e) {
             const originalText = e.trigger.innerHTML;
             e.trigger.innerHTML = '<i class="fas fa-check"></i> Copied!';
             

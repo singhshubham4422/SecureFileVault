@@ -35,9 +35,9 @@
                 {% endif %}
                 
                 <div class="d-grid">
-                    <a href="{{ url_for('get_encrypted_file') }}" class="btn btn-success">
+                    <a href="{{ url_for('get_encrypted_file') }}" class="btn btn-success btn-lg">
                         <i class="fas fa-download me-2"></i>
-                        Download Encrypted File
+                        Download Encrypted File ({{ encrypted_file }})
                     </a>
                 </div>
                 <hr>
@@ -123,9 +123,9 @@
                     <p class="mb-0">Your file has been decrypted and is ready for download.</p>
                 </div>
                 <div class="d-grid">
-                    <a href="{{ url_for('get_decrypted_file') }}" class="btn btn-success">
+                    <a href="{{ url_for('get_decrypted_file') }}" class="btn btn-success btn-lg">
                         <i class="fas fa-download me-2"></i>
-                        Download Decrypted File
+                        Download Decrypted File ({{ decrypted_file }})
                     </a>
                 </div>
                 <hr>
