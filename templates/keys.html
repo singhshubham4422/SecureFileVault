@@ -1,0 +1,91 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-secondary">
+                <h3 class="mb-0 card-title">
+                    <i class="fas fa-key me-2"></i>Stored Encryption Keys
+                </h3>
+            </div>
+            <div class="card-body">
+                {% if keys %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Warning:</strong> Private keys are sensitive. Make sure you're the only one who can see your screen.
+                    </div>
+                    <div class="accordion" id="keysAccordion">
+                        {% for key in keys %}
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="heading{{ key.id }}">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                            data-bs-target="#collapse{{ key.id }}" aria-expanded="false" 
+                                            aria-controls="collapse{{ key.id }}">
+                                        <span class="badge rounded-pill bg-{{ 'primary' if key.key_type == 'rsa' else 'success' }} me-2">
+                                            {{ key.key_type.upper() }}
+                                        </span>
+                                        {{ key.key_name }} 
+                                        <small class="text-muted ms-2">
+                                            ({{ key.created_at.strftime('%Y-%m-%d %H:%M:%S') }})
+                                        </small>
+                                    </button>
+                                </h2>
+                                <div id="collapse{{ key.id }}" class="accordion-collapse collapse" 
+                                     aria-labelledby="heading{{ key.id }}" data-bs-parent="#keysAccordion">
+                                    <div class="accordion-body">
+                                        <div class="mb-3">
+                                            <label class="form-label">Public Key</label>
+                                            <div class="input-group">
+                                                <textarea class="form-control" rows="3" readonly>{{ key.public_key }}</textarea>
+                                                <button class="btn btn-outline-secondary copy-btn" 
+                                                        data-clipboard-text="{{ key.public_key }}" type="button">
+                                                    <i class="fas fa-copy"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Private Key</label>
+                                            <div class="input-group">
+                                                <textarea class="form-control" rows="5" readonly>{{ key.private_key }}</textarea>
+                                                <button class="btn btn-outline-secondary copy-btn" 
+                                                        data-clipboard-text="{{ key.private_key }}" type="button">
+                                                    <i class="fas fa-copy"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <p class="mb-0">You don't have any stored encryption keys yet.</p>
+                        <p>When you encrypt files using RSA or ECC, your keys will be saved here for future use.</p>
+                        <a href="{{ url_for('index') }}" class="btn btn-primary mt-2">
+                            <i class="fas fa-lock me-2"></i>Encrypt a file
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize clipboard.js
+        var clipboard = new ClipboardJS('.copy-btn');
+        
+        clipboard.on('success', function(e) {
+            // Show tooltip or some indication that copy was successful
+            e.trigger.innerHTML = '<i class="fas fa-check"></i>';
+            setTimeout(function() {
+                e.trigger.innerHTML = '<i class="fas fa-copy"></i>';
+            }, 2000);
+            e.clearSelection();
+        });
+    });
+</script>
+{% endblock %}

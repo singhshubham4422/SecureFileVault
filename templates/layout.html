@@ -16,9 +16,43 @@
         <div class="container">
             <div class="d-flex align-items-center justify-content-between">
                 <h1 class="mb-0">
-                    <i class="fas fa-lock text-info me-2"></i>
-                    Secure File Encryption
+                    <a href="{{ url_for('index') }}" class="text-decoration-none text-white">
+                        <i class="fas fa-lock text-info me-2"></i>
+                        Secure File Encryption
+                    </a>
                 </h1>
+                <nav>
+                    <ul class="nav">
+                        {% if current_user.is_authenticated %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('encryption_history') }}">
+                                    <i class="fas fa-history me-1"></i> History
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('encryption_keys') }}">
+                                    <i class="fas fa-key me-1"></i> Keys
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('logout') }}">
+                                    <i class="fas fa-sign-out-alt me-1"></i> Logout
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('login') }}">
+                                    <i class="fas fa-sign-in-alt me-1"></i> Login
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('register') }}">
+                                    <i class="fas fa-user-plus me-1"></i> Register
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
             </div>
         </div>
     </header>
