@@ -45,7 +45,7 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 # Configure upload settings
-ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'xls', 'xlsx', 'zip', 'rar', 'py', 'js', 'html', 'css', 'csv'}
+ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx'}
 MAX_CONTENT_LENGTH = 20 * 1024 * 1024  # 20 MB max file size
 
 # Temporary directory for file operations
@@ -69,6 +69,10 @@ def allowed_file(filename):
 
 @app.route('/')
 def index():
+    # Redirect to login page if user is not authenticated
+    if not current_user.is_authenticated:
+        return redirect(url_for('login'))
+        
     # Clear any stored file paths when landing on the homepage
     if 'temp_file_path' in session:
         try:
@@ -94,6 +98,7 @@ def index():
     return render_template('index.html')
 
 @app.route('/encrypt', methods=['POST'])
+@login_required
 def encrypt():
     # Check if a file was uploaded
     if 'file' not in request.files:
@@ -245,6 +250,7 @@ def get_encrypted_file():
     return send_file(file_path, as_attachment=True, download_name=filename)
 
 @app.route('/decrypt', methods=['POST'])
+@login_required
 def decrypt():
     # Check if a file was uploaded
     if 'file' not in request.files:
