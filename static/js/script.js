@@ -139,8 +139,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const alerts = document.querySelectorAll('.alert:not(.alert-success)');
     alerts.forEach(function(alert) {
         setTimeout(function() {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
+            // Use the close button directly
+            if (alert && alert.querySelector('.btn-close')) {
+                alert.querySelector('.btn-close').click();
+            } else if (alert && alert.parentNode) {
+                // Fallback: remove the alert directly
+                alert.parentNode.removeChild(alert);
+            }
         }, 5000);
     });
 });
