@@ -1,0 +1,94 @@
+/* Custom styles */
+body {
+    padding-bottom: 70px; /* Space for footer */
+}
+
+.card {
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    margin-bottom: 20px;
+}
+
+.card-header {
+    border-top-left-radius: 10px !important;
+    border-top-right-radius: 10px !important;
+}
+
+.btn {
+    border-radius: 5px;
+    padding: 8px 16px;
+}
+
+.form-control, .form-select {
+    border-radius: 5px;
+    padding: 10px 12px;
+}
+
+/* File upload styling */
+input[type="file"] {
+    padding: 10px;
+    background-color: var(--bs-dark);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 5px;
+}
+
+/* Password strength indicator */
+.password-strength-meter {
+    height: 5px;
+    margin-top: 5px;
+    background-color: var(--bs-gray-700);
+    border-radius: 3px;
+}
+
+/* Custom animation for copy button */
+@keyframes copy-success {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.copied {
+    animation: copy-success 0.3s ease-in-out;
+}
+
+/* Encryption key text area */
+#encryption-details, #private-key {
+    font-family: monospace;
+    resize: none;
+    font-size: 0.85rem;
+}
+
+/* Better visibility for accordion items */
+.accordion-button:not(.collapsed) {
+    background-color: var(--bs-primary-bg-subtle);
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.accordion-body {
+    padding: 1.25rem;
+}
+
+/* Footer styling */
+footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    z-index: 100;
+}
+
+/* Alert styling */
+.alert {
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+/* Responsive fixes */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 1.5rem;
+    }
+    
+    .card-header h2 {
+        font-size: 1.1rem;
+    }
+}

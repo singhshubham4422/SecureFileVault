@@ -1,0 +1,326 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="row">
+    <!-- Left column: Encryption -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <h2 class="h5 mb-0">
+                    <i class="fas fa-lock me-2"></i>
+                    Encrypt File
+                </h2>
+            </div>
+            <div class="card-body">
+                {% if encrypted_file %}
+                <div class="alert alert-success mb-3">
+                    <h5><i class="fas fa-check-circle me-2"></i> Encryption Successful!</h5>
+                    <p class="mb-0">Your file has been encrypted and is ready for download.</p>
+                </div>
+                
+                {% if encryption_details %}
+                <div class="mb-3">
+                    <label class="form-label"><strong>Encryption Details:</strong></label>
+                    <div class="input-group">
+                        <textarea id="encryption-details" class="form-control" rows="3" readonly>{{ encryption_details }}</textarea>
+                        <button class="btn btn-outline-secondary" type="button" data-clipboard-target="#encryption-details">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <small class="text-muted">
+                        <i class="fas fa-exclamation-triangle text-warning me-1"></i>
+                        For RSA/ECC: Save this private key securely. It will be required for decryption.
+                    </small>
+                </div>
+                {% endif %}
+                
+                <div class="d-grid">
+                    <a href="{{ url_for('get_encrypted_file') }}" class="btn btn-success">
+                        <i class="fas fa-download me-2"></i>
+                        Download Encrypted File
+                    </a>
+                </div>
+                <hr>
+                <div class="d-grid">
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-redo me-2"></i>
+                        Encrypt Another File
+                    </a>
+                </div>
+                {% else %}
+                <form action="{{ url_for('encrypt') }}" method="post" enctype="multipart/form-data">
+                    <!-- File Input -->
+                    <div class="mb-3">
+                        <label for="file" class="form-label">
+                            <i class="fas fa-file-upload me-2"></i>
+                            Select File to Encrypt
+                        </label>
+                        <input type="file" class="form-control" id="file" name="file" required>
+                        <small class="text-muted">Max file size: 20MB</small>
+                    </div>
+                    
+                    <!-- Encryption Method -->
+                    <div class="mb-3">
+                        <label for="encryption_method" class="form-label">
+                            <i class="fas fa-shield-alt me-2"></i>
+                            Encryption Method
+                        </label>
+                        <select class="form-select" id="encryption_method" name="encryption_method" required>
+                            <option value="aes" selected>AES-256 (Symmetric)</option>
+                            <option value="3des">3DES (Symmetric)</option>
+                            <option value="rsa">RSA (Asymmetric)</option>
+                            <option value="ecc">ECC (Elliptic Curve)</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Password for Symmetric Encryption -->
+                    <div class="mb-3" id="password-group">
+                        <label for="password" class="form-label">
+                            <i class="fas fa-key me-2"></i>
+                            Password
+                        </label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="password" name="password" 
+                                   placeholder="Enter a strong password">
+                            <button class="btn btn-outline-secondary" type="button" id="toggle-password">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            <span id="password-strength">
+                                For symmetric encryption (AES, 3DES), use a strong password
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- Submit Button -->
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-lock me-2"></i>
+                            Encrypt File
+                        </button>
+                    </div>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right column: Decryption -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-info text-white">
+                <h2 class="h5 mb-0">
+                    <i class="fas fa-unlock-alt me-2"></i>
+                    Decrypt File
+                </h2>
+            </div>
+            <div class="card-body">
+                {% if decrypted_file %}
+                <div class="alert alert-success mb-3">
+                    <h5><i class="fas fa-check-circle me-2"></i> Decryption Successful!</h5>
+                    <p class="mb-0">Your file has been decrypted and is ready for download.</p>
+                </div>
+                <div class="d-grid">
+                    <a href="{{ url_for('get_decrypted_file') }}" class="btn btn-success">
+                        <i class="fas fa-download me-2"></i>
+                        Download Decrypted File
+                    </a>
+                </div>
+                <hr>
+                <div class="d-grid">
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-redo me-2"></i>
+                        Decrypt Another File
+                    </a>
+                </div>
+                {% else %}
+                <form action="{{ url_for('decrypt') }}" method="post" enctype="multipart/form-data">
+                    <!-- File Input -->
+                    <div class="mb-3">
+                        <label for="decrypt-file" class="form-label">
+                            <i class="fas fa-file-upload me-2"></i>
+                            Select Encrypted File
+                        </label>
+                        <input type="file" class="form-control" id="decrypt-file" name="file" required>
+                    </div>
+                    
+                    <!-- Decryption Method -->
+                    <div class="mb-3">
+                        <label for="decryption_method" class="form-label">
+                            <i class="fas fa-shield-alt me-2"></i>
+                            Decryption Method
+                        </label>
+                        <select class="form-select" id="decryption_method" name="decryption_method" required>
+                            <option value="aes" selected>AES-256 (Symmetric)</option>
+                            <option value="3des">3DES (Symmetric)</option>
+                            <option value="rsa">RSA (Asymmetric)</option>
+                            <option value="ecc">ECC (Elliptic Curve)</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Password for Symmetric Decryption -->
+                    <div class="mb-3" id="decrypt-password-group">
+                        <label for="decrypt-password" class="form-label">
+                            <i class="fas fa-key me-2"></i>
+                            Password
+                        </label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="decrypt-password" name="password" 
+                                   placeholder="Enter the encryption password">
+                            <button class="btn btn-outline-secondary" type="button" id="toggle-decrypt-password">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">Required for AES and 3DES</div>
+                    </div>
+                    
+                    <!-- Private Key for Asymmetric Decryption -->
+                    <div class="mb-3" id="private-key-group" style="display: none;">
+                        <label for="private-key" class="form-label">
+                            <i class="fas fa-key me-2"></i>
+                            Private Key
+                        </label>
+                        <textarea class="form-control" id="private-key" name="private_key" rows="3" 
+                                  placeholder="Paste the private key here"></textarea>
+                        <div class="form-text">Required for RSA and ECC</div>
+                    </div>
+                    
+                    <!-- Submit Button -->
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-info">
+                            <i class="fas fa-unlock-alt me-2"></i>
+                            Decrypt File
+                        </button>
+                    </div>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Encryption Info Section -->
+<div class="row mt-2">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h3 class="h5 mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    About File Encryption
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="accordion" id="encryptionInfoAccordion">
+                    <!-- AES Info -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingAES">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAES" aria-expanded="false" aria-controls="collapseAES">
+                                <i class="fas fa-shield-alt me-2"></i>
+                                AES-256 Encryption
+                            </button>
+                        </h2>
+                        <div id="collapseAES" class="accordion-collapse collapse" aria-labelledby="headingAES" data-bs-parent="#encryptionInfoAccordion">
+                            <div class="accordion-body">
+                                <p><strong>Advanced Encryption Standard (AES-256)</strong> is a symmetric encryption algorithm that uses a 256-bit key for maximum security.</p>
+                                <ul>
+                                    <li><i class="fas fa-check text-success me-2"></i> Extremely secure when used with a strong password</li>
+                                    <li><i class="fas fa-check text-success me-2"></i> Fast encryption and decryption</li>
+                                    <li><i class="fas fa-check text-success me-2"></i> Widely used for sensitive data</li>
+                                    <li><i class="fas fa-info-circle text-info me-2"></i> Requires the same password for both encryption and decryption</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 3DES Info -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="heading3DES">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse3DES" aria-expanded="false" aria-controls="collapse3DES">
+                                <i class="fas fa-shield-alt me-2"></i>
+                                3DES Encryption
+                            </button>
+                        </h2>
+                        <div id="collapse3DES" class="accordion-collapse collapse" aria-labelledby="heading3DES" data-bs-parent="#encryptionInfoAccordion">
+                            <div class="accordion-body">
+                                <p><strong>Triple DES (3DES)</strong> applies the DES algorithm three times to each data block, using a 168-bit key.</p>
+                                <ul>
+                                    <li><i class="fas fa-check text-success me-2"></i> Good compatibility with legacy systems</li>
+                                    <li><i class="fas fa-check text-success me-2"></i> Proven encryption algorithm</li>
+                                    <li><i class="fas fa-info-circle text-info me-2"></i> Slower than AES</li>
+                                    <li><i class="fas fa-info-circle text-info me-2"></i> Requires the same password for both encryption and decryption</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- RSA Info -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingRSA">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRSA" aria-expanded="false" aria-controls="collapseRSA">
+                                <i class="fas fa-key me-2"></i>
+                                RSA Encryption
+                            </button>
+                        </h2>
+                        <div id="collapseRSA" class="accordion-collapse collapse" aria-labelledby="headingRSA" data-bs-parent="#encryptionInfoAccordion">
+                            <div class="accordion-body">
+                                <p><strong>RSA (Rivest–Shamir–Adleman)</strong> is an asymmetric encryption algorithm that uses a pair of keys: public key for encryption and private key for decryption.</p>
+                                <ul>
+                                    <li><i class="fas fa-check text-success me-2"></i> Secure key exchange without sharing secrets</li>
+                                    <li><i class="fas fa-check text-success me-2"></i> 2048-bit keys provide strong security</li>
+                                    <li><i class="fas fa-exclamation-triangle text-warning me-2"></i> Private key must be kept secret and secure</li>
+                                    <li><i class="fas fa-info-circle text-info me-2"></i> Uses hybrid encryption (RSA + AES) for better performance</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- ECC Info -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingECC">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseECC" aria-expanded="false" aria-controls="collapseECC">
+                                <i class="fas fa-key me-2"></i>
+                                ECC Encryption
+                            </button>
+                        </h2>
+                        <div id="collapseECC" class="accordion-collapse collapse" aria-labelledby="headingECC" data-bs-parent="#encryptionInfoAccordion">
+                            <div class="accordion-body">
+                                <p><strong>Elliptic Curve Cryptography (ECC)</strong> is a modern asymmetric encryption approach that offers equivalent security to RSA with smaller key sizes.</p>
+                                <ul>
+                                    <li><i class="fas fa-check text-success me-2"></i> Stronger security with smaller keys compared to RSA</li>
+                                    <li><i class="fas fa-check text-success me-2"></i> Faster encryption and decryption than RSA</li>
+                                    <li><i class="fas fa-check text-success me-2"></i> Uses Curve25519 for key exchange</li>
+                                    <li><i class="fas fa-exclamation-triangle text-warning me-2"></i> Private key must be kept secret and secure</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Security Notes -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingSecurity">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSecurity" aria-expanded="false" aria-controls="collapseSecurity">
+                                <i class="fas fa-lock me-2"></i>
+                                Security Information
+                            </button>
+                        </h2>
+                        <div id="collapseSecurity" class="accordion-collapse collapse" aria-labelledby="headingSecurity" data-bs-parent="#encryptionInfoAccordion">
+                            <div class="accordion-body">
+                                <p><strong>Important Security Notes:</strong></p>
+                                <ul>
+                                    <li><i class="fas fa-check text-success me-2"></i> All encryption and decryption is performed locally in your browser</li>
+                                    <li><i class="fas fa-check text-success me-2"></i> No passwords or keys are stored on the server</li>
+                                    <li><i class="fas fa-check text-success me-2"></i> Uses PBKDF2 with 100,000 iterations for password-based key derivation</li>
+                                    <li><i class="fas fa-exclamation-triangle text-warning me-2"></i> Save your passwords and private keys securely</li>
+                                    <li><i class="fas fa-exclamation-triangle text-warning me-2"></i> Lost passwords or private keys mean permanent loss of access to encrypted files</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
