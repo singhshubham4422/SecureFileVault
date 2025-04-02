@@ -140,12 +140,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const alerts = document.querySelectorAll('.alert:not(.alert-success)');
     alerts.forEach(function(alert) {
         setTimeout(function() {
-            // Use the close button directly
-            if (alert && alert.querySelector('.btn-close')) {
-                alert.querySelector('.btn-close').click();
-            } else if (alert && alert.parentNode) {
-                // Fallback: remove the alert directly
-                alert.parentNode.removeChild(alert);
+            try {
+                // Use the close button directly
+                if (alert && alert.querySelector('.btn-close')) {
+                    alert.querySelector('.btn-close').click();
+                } else if (alert && alert.parentNode) {
+                    // Fallback: remove the alert directly
+                    alert.parentNode.removeChild(alert);
+                }
+            } catch (error) {
+                console.log('Error dismissing alert:', error);
             }
         }, 5000);
     });

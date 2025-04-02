@@ -1,7 +1,7 @@
 import os
 import logging
 import hashlib
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session, has_request_context
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.utils import secure_filename
@@ -29,6 +29,12 @@ logging.basicConfig(level=logging.DEBUG)
 # Initialize Flask app
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "secure-file-encryption-app")
+
+# Configure session to be more secure and persistent
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_PERMANENT'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
+app.config['SESSION_USE_SIGNER'] = True
 
 # Configure SQLAlchemy
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
@@ -73,28 +79,23 @@ def index():
     # Redirect to login page if user is not authenticated
     if not current_user.is_authenticated:
         return redirect(url_for('login'))
-        
-    # Clear any stored file paths when landing on the homepage
-    if 'temp_file_path' in session:
-        try:
-            os.remove(session['temp_file_path'])
-        except (OSError, FileNotFoundError):
-            pass
-        session.pop('temp_file_path', None)
-        
-    if 'output_file_path' in session:
-        try:
-            os.remove(session['output_file_path'])
-        except (OSError, FileNotFoundError):
-            pass
-        session.pop('output_file_path', None)
-
-    if 'encrypted_file_path' in session:
-        try:
-            os.remove(session['encrypted_file_path'])
-        except (OSError, FileNotFoundError):
-            pass
-        session.pop('encrypted_file_path', None)
+    
+    # Only clean up files if we're not in the middle of a file download
+    if not session.get('downloading'):
+        logging.debug("Index route - cleaning up old files")
+        # Clear any stored file paths when landing on the homepage
+        for key in ['temp_file_path', 'output_file_path', 'encrypted_file_path', 'decrypted_file_path']:
+            if key in session:
+                try:
+                    path = session[key]
+                    if os.path.exists(path):
+                        logging.info(f"Cleaning up file from index route: {path}")
+                        os.remove(path)
+                    session.pop(key, None)
+                except (OSError, FileNotFoundError) as e:
+                    logging.error(f"Error clearing file {key} from index: {str(e)}")
+    else:
+        logging.debug("Index route - skipping cleanup due to active download")
         
     return render_template('index.html')
 
@@ -203,6 +204,10 @@ def encrypt():
         session['encrypted_filename'] = output_filename
         session['encryption_details'] = encryption_details
         
+        # Log what we're storing in the session
+        logging.info(f"Stored in session - path: {output_file_path}, filename: {output_filename}")
+        logging.info(f"Session now contains keys: {list(session.keys())}")
+        
         # Save encryption history to database
         encrypted_file_size = os.path.getsize(output_file_path)
         
@@ -229,7 +234,10 @@ def encrypt():
 
 @app.route('/download_encrypted')
 def download_encrypted():
+    logging.debug("Session keys: %s", list(session.keys()))
+    
     if 'encrypted_file_path' not in session or 'encrypted_filename' not in session:
+        logging.error("Missing encrypted file information in session")
         flash('No encrypted file available for download', 'danger')
         return redirect(url_for('index'))
     
@@ -237,27 +245,53 @@ def download_encrypted():
     filename = session['encrypted_filename']
     encryption_details = session.get('encryption_details', 'File encrypted successfully')
     
+    logging.info(f"Showing download page for: {file_path} as {filename}")
+    
+    # Verify the file exists
+    if not os.path.exists(file_path):
+        logging.error(f"File does not exist at path: {file_path}")
+        flash('Encrypted file not found on server', 'danger')
+        return redirect(url_for('index'))
+        
+    # Return the download page with the file information
     return render_template('index.html', encrypted_file=filename, encryption_details=encryption_details)
 
 @app.route('/get_encrypted_file')
 def get_encrypted_file():
+    logging.debug(f"Download encrypted file - Session keys: {list(session.keys())}")
+    
     if 'encrypted_file_path' not in session or 'encrypted_filename' not in session:
+        logging.error("Missing encrypted file path or filename in session during download")
         flash('No encrypted file available for download', 'danger')
         return redirect(url_for('index'))
     
     file_path = session['encrypted_file_path']
     filename = session['encrypted_filename']
     
+    # Flag that we're in the process of downloading - don't delete the file
+    session['downloading'] = True
+    
     # Check if file exists before sending
     if not os.path.exists(file_path):
+        logging.error(f"Encrypted file not found at path: {file_path}")
+        session.pop('downloading', None)
         flash('Encrypted file not found on server', 'danger')
         return redirect(url_for('index'))
         
     try:
         logging.info(f"Attempting to send file: {file_path} as {filename}")
-        return send_file(file_path, as_attachment=True, download_name=filename)
+        response = send_file(file_path, as_attachment=True, download_name=filename)
+        
+        # Add a callback to clear the downloading flag when the response is closed
+        @response.call_on_close
+        def on_close():
+            logging.info("Download encrypted file response closed, removing download flag")
+            session.pop('downloading', None)
+            
+        return response
     except Exception as e:
         logging.error(f"Error sending file: {str(e)}")
+        session.pop('downloading', None)
         flash(f'Error downloading file: {str(e)}', 'danger')
         return redirect(url_for('index'))
 
@@ -334,6 +368,10 @@ def decrypt():
         session['decrypted_file_path'] = output_file_path
         session['decrypted_filename'] = output_filename
         
+        # Log what we're storing in the session
+        logging.info(f"Stored in session for decryption - path: {output_file_path}, filename: {output_filename}")
+        logging.info(f"Session now contains keys: {list(session.keys())}")
+        
         # Save decryption history to database
         decrypted_file_size = os.path.getsize(output_file_path)
         decrypted_file_hash = calculate_file_hash(output_file_path)
@@ -361,34 +399,62 @@ def decrypt():
 
 @app.route('/download_decrypted')
 def download_decrypted():
+    logging.debug("Session keys for decryption: %s", list(session.keys()))
+    
     if 'decrypted_file_path' not in session or 'decrypted_filename' not in session:
+        logging.error("Missing decrypted file information in session")
         flash('No decrypted file available for download', 'danger')
         return redirect(url_for('index'))
     
     file_path = session['decrypted_file_path']
     filename = session['decrypted_filename']
+    
+    logging.info(f"Showing decrypted download page for: {file_path} as {filename}")
+    
+    # Verify the file exists
+    if not os.path.exists(file_path):
+        logging.error(f"Decrypted file does not exist at path: {file_path}")
+        flash('Decrypted file not found on server', 'danger')
+        return redirect(url_for('index'))
     
     return render_template('index.html', decrypted_file=filename)
 
 @app.route('/get_decrypted_file')
 def get_decrypted_file():
+    logging.debug(f"Download decrypted file - Session keys: {list(session.keys())}")
+    
     if 'decrypted_file_path' not in session or 'decrypted_filename' not in session:
+        logging.error("Missing decrypted file path or filename in session during download")
         flash('No decrypted file available for download', 'danger')
         return redirect(url_for('index'))
     
     file_path = session['decrypted_file_path']
     filename = session['decrypted_filename']
     
+    # Flag that we're in the process of downloading - don't delete the file
+    session['downloading'] = True
+    
     # Check if file exists before sending
     if not os.path.exists(file_path):
+        logging.error(f"Decrypted file not found at path: {file_path}")
+        session.pop('downloading', None)
         flash('Decrypted file not found on server', 'danger')
         return redirect(url_for('index'))
         
     try:
         logging.info(f"Attempting to send decrypted file: {file_path} as {filename}")
-        return send_file(file_path, as_attachment=True, download_name=filename)
+        response = send_file(file_path, as_attachment=True, download_name=filename)
+        
+        # Add a callback to clear the downloading flag when the response is closed
+        @response.call_on_close
+        def on_close():
+            logging.info("Download decrypted file response closed, removing download flag")
+            session.pop('downloading', None)
+            
+        return response
     except Exception as e:
         logging.error(f"Error sending decrypted file: {str(e)}")
+        session.pop('downloading', None)
         flash(f'Error downloading file: {str(e)}', 'danger')
         return redirect(url_for('index'))
 
@@ -502,14 +568,25 @@ def encryption_keys():
 def clear_files():
     """Explicitly clear temporary files"""
     if has_request_context():
+        # Don't clean if we're in the middle of a download
+        if session.get('downloading'):
+            flash('Cannot clear files while a download is in progress', 'warning')
+            return redirect(url_for('index'))
+            
         for key in ['temp_file_path', 'output_file_path', 'encrypted_file_path', 'decrypted_file_path']:
             if key in session:
                 try:
                     path = session[key]
                     if os.path.exists(path):
+                        logging.info(f"Removing file: {path}")
                         os.remove(path)
+                    else:
+                        logging.warning(f"File not found when clearing: {path}")
                     session.pop(key, None)
                 except (OSError, FileNotFoundError) as e:
                     logging.error(f"Error clearing file {key}: {str(e)}")
+        
+        # Clear any leftover flags
+        session.pop('downloading', None)
         flash('Temporary files cleared', 'info')
     return redirect(url_for('index'))
